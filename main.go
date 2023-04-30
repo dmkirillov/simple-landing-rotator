@@ -51,6 +51,44 @@ func main() {
 		c.Redirect(302, redirectUrl)
 	})
 
+	r.POST("/links", func(c *gin.Context) {
+		var link struct {
+			URL         string  `json:"url"`
+			Probability float64 `json:"probability"`
+		}
+		if err := c.BindJSON(&link); err != nil {
+			c.String(400, "Invalid request body")
+			return
+		}
+
+		links = append(links, link.URL)
+		probabilities = append(probabilities, link.Probability)
+		logger.Info().Str("url", link.URL).Msg("Link added")
+		c.Status(204)
+	})
+
+	r.DELETE("/links/:url", func(c *gin.Context) {
+		urlToDelete := c.Param("url")
+
+		index := -1
+		for i, url := range links {
+			if url == urlToDelete {
+				index = i
+				break
+			}
+		}
+
+		if index == -1 {
+			c.String(404, "Link not found")
+			return
+		}
+
+		links = append(links[:index], links[index+1:]...)
+		probabilities = append(probabilities[:index], probabilities[index+1:]...)
+		logger.Info().Str("url", urlToDelete).Msg("Link removed")
+		c.Status(204)
+	})
+
 	err := r.Run(":8081")
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed to start server")
